@@ -2,8 +2,8 @@
 # this script is only valid for Drupal 10
 
 man() {
-    echo "enable: create services.yml, debug: true, auto_reload: true, cache: false, composer require devel, drush devel, composer require webpfrofiler, drush en webprofiller, drush cr."
-    echo "disable: rm -rf services.yml, drush pmu webprofiler, composer remove drupal/webprofiler, composer remove drupal/devel, drush cr"
+    echo "enable: debug: true, auto_reload: true, cache: false, composer require webpfrofiler, drush en webprofiller, agregation CSS/JS FALSE, drush cr"
+    echo "disable: debug: false, auto_reload: null, cache: true, drush cr, drush pmu webprofiler, composer remove drupal/webprofiler, agregation CSS/JJS TRUE, drush cr"
 }
 
 enable() {
@@ -12,52 +12,53 @@ enable() {
         vendor/bin/run toolkit:build-dev
     fi
 
-    file_path="web/sites/default/services.yml"
-    if [[ ! -e "$file_path"  ]]; then
-        cp web/sites/default/default.services.yml web/sites/default/services.yml &&
-        file="web/sites/default/services.yml"
-        line_number=82
-        new_line="    debug: true"   
-        sed -i "${line_number}s/.*/${new_line}/" "$file"
-        line_number=91
-        new_line="    auto_reload: true"
-        sed -i "${line_number}s/.*/${new_line}/" "$file"
-        line_number=102
-        new_line="    cache: false"
-        sed -i "${line_number}s/.*/${new_line}/" "$file"
-    fi
-    
-    echo "#######"
-    echo "Devel"
-    echo "#######"
-    composer require 'drupal/devel:^5.0' &&
+    echo "##################"
+    echo "Enable twig debug"
+    echo "##################"
+    drush state:set twig_debug 1 --input-format=integer && \
+    drush state:set twig_cache_disable 1 --input-format=integer && \
+    drush state:set disable_rendered_output_cache_bins 1 --input-format=integer && \
+    drush cr     
 
     echo "#############"
     echo "Webpfrofiler"
     echo "#############"
-    composer require 'drupal/webprofiler:^10.1' &&
-    drush en webprofiler
+    composer require 'drupal/webprofiler:^10.1'
+    drush en webprofiler -y
     chown www-data:www-data web/sites/default/files/profiler
+
+    echo "##########################"
+    echo "Disable CSS/JS agregation"
+    echo "##########################"
+    drush -y config:set system.performance css.preprocess 0
+    drush -y config:set system.performance js.preprocess 0
 
     drush cr
 }
 
 disable() {
-    echo "####################"
-    echo "Delete services.yml"
-    echo "####################"
-    rm -rf web/sites/default/services.yml
+    echo "###################"
+    echo "Disable twig debug"
+    echo "###################"
+    drush state:set twig_debug 0 --input-format=integer && \
+    drush state:set twig_cache_disable 0 --input-format=integer && \
+    drush state:set disable_rendered_output_cache_bins 0 --input-format=integer && \
+    drush cr
     
     echo "################################"
     echo "Disable and remove Webpfrofiler"
     echo "################################"
-    drush pmu webprofiler
+    drush pmu webprofiler -y
     composer remove drupal/webprofiler
 
-    echo "#######"
-    echo "Devel"
-    echo "#######"
-    composer remove drupal/devel
+    drush cr
+
+    echo "##########################"
+    echo "Enable CSS/JS agregation"
+    echo "##########################"
+    drush -y config:set system.performance css.preprocess 1
+    drush -y config:set system.performance js.preprocess 1
+    
     drush cr
 }
 
@@ -71,8 +72,8 @@ if [ "$#" -eq 0 ]; then
     echo
     echo "Select an option:"
     echo
-    echo "enable: twig_debug, twig_cache_disable, disable_rendered_output_cache_bins, drush en webprofiler, drush en devel"
-    echo "disable: twig_debug, twig_cache_disable, disable_rendered_output_cache_bins, drush en webprofiler, drush en devel"
+    echo "enable: debug: true, auto_reload: true, cache: false, composer require webpfrofiler, drush en webprofiller, agregation CSS/JS FALSE, drush cr"
+    echo "disable: debug: false, auto_reload: null, cache: true, drush cr, drush pmu webprofiler, composer remove drupal/webprofiler, agregation CSS/JJS TRUE, drush cr"
 
     # Get user input
     read -p "Enter the option number: " option
